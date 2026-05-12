@@ -37,7 +37,7 @@ Usage: $progn <options>
 
     -x            Display video live (to X)
     -d            Script debugging
-    -p            Print output file name to stdout (for use in other scripts)
+    -p            Print ffmpeg command and exit
 
 _EOL_
 
@@ -73,7 +73,7 @@ while [ -n "$1" ] ; do
             DEBUG=true
             ;;
         -p) shift
-            echo "$VID_OUTPUT"
+            PRINTCMD=true
             ;;
         *) usage ;;
     esac
@@ -96,7 +96,7 @@ done
     # Input ALSA?
     grep -q CAPTURE <( alsactl info "$AUD_DEVICE" 2> /dev/null ) && { 
         pd "--- $AUD_DEVICE is an ALSA capture device"
-        audioInputParam=( "${audioInputParam[@]}" -f alsa )
+        audioInputParam=( "${audioInputParam[@]}" -f alsa -channels 2 -framerate 48000 )
     } || {
         pd "--- Error: AUD_DEVICE '$AUD_DEVICE' not found (or is not an ALSA device)."
         exit 1
@@ -115,7 +115,8 @@ cmd=( ffmpeg
 
   # Audio source
     "${audioInputParam[@]}"
-    -ac 2 
+    -channels 2 
+    -framerate 44100
         -i "$AUD_DEVICE"
 
   # Video source
@@ -136,6 +137,7 @@ cmd=( ffmpeg
 )
 
 pd -ne "\n    ### Executing >> ${cmd[@]} <<\n\n" 
+${PRINTCMD:-false} && { echo "${cmd[@]}"; exit; }
 
 "${cmd[@]}"
 

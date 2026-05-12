@@ -32,8 +32,8 @@ while [ -n "$1" ] ; do
     case "$1" in
         -c) 
             shift
-            [ -f "$1" ] || [ -c "$1" ] || {
-                echo "Input `"$1"` not found."
+            [ -e "$1" ] || {
+                echo "Input < "$1" > not found."
                 exit 1
             }
             inputDevice="$1"
@@ -50,11 +50,13 @@ done
 # Input ALSA?
 grep -q CAPTURE <( alsactl info $inputDevice 2> /dev/null ) && { 
     echo "$inputDevice is an ALSA capture device" >&2
-    inputParam=( "${inputParam[@]}" -f alsa )
+    inputParam=( "${inputParam[@]}" -f alsa -channels 2 -framerate 48000 )
+} || {
+    inputParam=( "${inputParam[@]}" -f s16le -ac 2 -ar 48000 )
 }
     
 # Output ALSA?
-grep -q CAPTURE <( alsactl info $outputDevice 2> /dev/null ) && { 
+grep -q PLAYBACK <( alsactl info $outputDevice 2> /dev/null ) && { 
     echo "$outputDevice is an ALSA playback device" >&2
     outputParam=( "${outputParam[@]}" -f alsa )
 }
@@ -64,7 +66,7 @@ cmd=( ffmpeg
     -hide_banner 
     "${inputParam[@]}" 
     -i "$inputDevice" 
-    "${outputParam[@]}" -ac 2 
+    "${outputParam[@]}" -c:a copy 
     "$outputDevice"
 )
 
