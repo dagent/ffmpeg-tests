@@ -1,0 +1,34 @@
+Wed Mar 25 10:20:55 AM PDT 2026
+
+ALSA and V4L2 audio and video not syncing.  From ffmpg -h full :
+
+V4L2 indev AVOptions:
+  -standard          <string>     .D......... set TV standard, used only by analog frame grabber
+  -channel           <int>        .D......... set TV channel, used only by frame grabber (from -1 to INT_MAX) (default -1)
+  -video_size        <image_size> .D......... set frame size
+  -pixel_format      <string>     .D......... set preferred pixel format
+  -input_format      <string>     .D......... set preferred pixel format (for raw video) or codec name
+  -framerate         <string>     .D......... set frame rate
+  -list_formats      <int>        .D......... list available formats and exit (from 0 to INT_MAX) (default 0)
+     all             3            .D......... show all available formats
+     raw             1            .D......... show only non-compressed formats
+     compressed      2            .D......... show only compressed formats
+  -list_standards    <int>        .D......... list supported standards and exit (from 0 to 1) (default 0)
+     all             1            .D......... show all supported standards
+  -timestamps        <int>        .D......... set type of timestamps for grabbed frames (from 0 to 2) (default default)
+     default         0            .D......... use timestamps from the kernel
+     abs             1            .D......... use absolute timestamps (wall clock)
+     mono2abs        2            .D......... force conversion from monotonic to absolute timestamps
+  -ts                <int>        .D......... set type of timestamps for grabbed frames (from 0 to 2) (default default)
+     default         0            .D......... use timestamps from the kernel
+     abs             1            .D......... use absolute timestamps (wall clock)
+     mono2abs        2            .D......... force conversion from monotonic to absolute timestamps
+  -use_libv4l2       <boolean>    .D......... use libv4l2 (v4l-utils) conversion functions (default false)
+
+---------------
+
+Works well:
+ffmpeg -y -hide_banner -f alsa -ac 2 -i hw:3 -f v4l2 -video_size 640x480 -framerate 30 -ts 1 -input_format yuyv422 -i /dev/video0 -force_key_frames 00:00:00.000 SYNCTEST.mp4 -f xv 
+
+Problems: 
+ffmpeg -y -hide_banner -f alsa -ac 2 -i hw:3 -f v4l2 -video_size 640x480 -framerate 30 -input_format yuyv422 -ts 1 -i /dev/video0 -force_key_frames 00:00:00.000 202603251339-output.mkv -f xv /dev/video0 @ 640x480 30fps
