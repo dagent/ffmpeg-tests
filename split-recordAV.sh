@@ -130,7 +130,7 @@ pd "Display PID $vidpid1"
     #-f v4l2 -i /dev/video$VID2 -f xv "/dev/video$VID2" & } || { 
     #echo "Display 2 borked" >&2 ; exit ; } ; vid2pid=$!
 
-[ -n "$VID_OUTPUT" ] && {
+if [ -n "$VID_OUTPUT" ] ; then 
     echo "Saving to file ${VID_OUTPUT}"
     { ffmpeg -y -hide_banner -loglevel error \
         -f v4l2 -i  /dev/video$VID2 "${VID_OUTPUT}" & } || { 
@@ -139,10 +139,10 @@ pd "Display PID $vidpid1"
             } 
             vid2pid=$!
             pd "File save PID $vidpid2"
-} || {
+ else 
     pd "Not saving to file, skipping ffmpeg output command."
     echo "/dev/video$VID2 is available for use with other software." >&2
-}
+fi
 
 cleanup () {
     sleep .5

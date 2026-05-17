@@ -15,12 +15,12 @@ type -p pd || pd () {
 modCheck () {
     if lsmod | grep -q v4l2loopback ; then
         pd "v4l2loopback module is already loaded."
-        pushd /sys/devices/virtual/video4linux/ 
+        pushd /sys/devices/virtual/video4linux/ &> /dev/null
         vids=( video* )
         VID1=${vids[0]#video}
         VID2=${vids[1]#video}
         modOptions=(video_nr=$VID1,$VID2 card_label='loopback1','loopback2')
-        popd
+        popd &> /dev/null
 
         return 0
     else
