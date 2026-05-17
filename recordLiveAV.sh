@@ -1,6 +1,7 @@
 #/bin/bash
 
 # Mix video and audio input in real time, while displaying video, save to file.
+# Perfomance is not great, but it works.  The script is a bit rough, but it gets the job done.
  
 _now=$(printf "%(%Y%m%d-%H%M)T" -1)
 progn=${0##*/}

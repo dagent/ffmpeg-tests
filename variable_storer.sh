@@ -5,7 +5,7 @@
 declare -Agx STORED_VARS  # Array of variables 
 
 # Function sets and exports variables 
-# example: storer foo bar <- sets variable foo to bar iff foo not set
+# example: setAndStore foo bar <- sets variable foo to bar iff foo not set
 setAndStore() {
     export ${1}="${!1:-${2}}"
     ${DEBUG:-false} && echo "${1} = ${!1}" >&2

@@ -20,8 +20,8 @@ $progn [ -c file ] [ -p file ]
 
     ALSA device detection should be automatic.
 
-    -c file    Input file or device (default $inputDevice)
-    -p file    Output file or device (default $outputDevice)
+    -c file    Input file or capture device (default $inputDevice)
+    -p file    Output file or playback device (default $outputDevice)
 
 _EOL_
 
@@ -33,7 +33,7 @@ while [ -n "$1" ] ; do
         -c) 
             shift
             [ -e "$1" ] || {
-                echo "Input < "$1" > not found."
+                echo "Input < "$1" > not found." >&2
                 exit 1
             }
             inputDevice="$1"
@@ -48,12 +48,12 @@ while [ -n "$1" ] ; do
 done
 
 # Input ALSA?
-grep -q CAPTURE <( alsactl info $inputDevice 2> /dev/null ) && { 
+if grep -q CAPTURE <( alsactl info $inputDevice 2> /dev/null ) ; then  
     echo "$inputDevice is an ALSA capture device" >&2
-    inputParam=( "${inputParam[@]}" -f alsa -channels 2 -framerate 48000 )
-} || {
+    inputParam=( "${inputParam[@]}" -f alsa -ac 2 -ar 48000 )
+else
     inputParam=( "${inputParam[@]}" -f s16le -ac 2 -ar 48000 )
-}
+fi
     
 # Output ALSA?
 grep -q PLAYBACK <( alsactl info $outputDevice 2> /dev/null ) && { 
@@ -63,15 +63,15 @@ grep -q PLAYBACK <( alsactl info $outputDevice 2> /dev/null ) && {
 
 
 cmd=( ffmpeg 
-    -hide_banner 
+    -hide_banner -loglevel error
     "${inputParam[@]}" 
     -i "$inputDevice" 
     "${outputParam[@]}" -c:a copy 
     "$outputDevice"
 )
 
-echo "Executing >> ${cmd[@]}"
-${cmd[@]}
+echo "$progn: Executing >> ${cmd[@]}" >&2
+"${cmd[@]}"
 
 exit
 

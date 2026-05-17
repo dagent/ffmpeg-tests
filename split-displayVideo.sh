@@ -3,10 +3,19 @@
 # Split video input into 2, display video, save to file.
 # Uses ffmpeg, v4l2loopback
 
+
  
 _now=$(printf "%(%Y%m%d-%H%M)T" -1)
 progn=${0##*/}  # basename
 cd ${0%/*} # Need to be in dirname for this script to work
+
+# Are we already running? If so, exit. This is to prevent multiple instances of
+# this script from running at the same time and creating multiple loopback
+# devices.
+if [ -f /tmp/${progn}-vars.txt ] ; then
+    echo "Another instance of $progn is already running. Exiting." >&2
+    exit 1
+fi
 
 # Ability to declare and store our variables if not already set. See variable_storer.sh for details.
 [ -f ./variable_storer.sh ] || {
@@ -142,7 +151,11 @@ if [ -n "$VID_OUTPUT" ] ; then
  else 
     pd "Not saving to file, skipping ffmpeg output command."
     echo "/dev/video$VID2 is available for use with other software." >&2
+    setAndStore AVAILABLE "/dev/video$VID2"
 fi
+
+# Make available for merging with audio via play_audio.sh and mergeAV.sh. See those scripts for details.
+printSTORED > /tmp/${progn}-vars.txt
 
 cleanup () {
     sleep .5
@@ -151,11 +164,12 @@ cleanup () {
     kill -HUP $vid1pid
     sleep .5
     kill $loopcmdpid
-    #sleep .5
+    [ -f /tmp/${progn}-vars.txt ] && rm /tmp/${progn}-vars.txt
+    #sleep .setAndStore
     #modDelete
 }
 
 trap cleanup EXIT HUP TERM
 
-wait $vid1pid 
+wait -n $vid1pid $vid2pid $loopcmdpid
 
