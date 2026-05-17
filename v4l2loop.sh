@@ -1,6 +1,9 @@
 #! /bin/bash
 
-# Install v4l2loopback module if not loaded.  Defaults to creating /dev/video3 and /dev/video4 loopback devices.
+# Install v4l2loopback module if not loaded.  Defaults to creating /dev/videoX
+# and /dev/videoX+1 loopback devices, where X is the next available video
+# number.  To specify different video numbers, set VID1 and VID2 environment
+# variables before running the script. 
 
 
 type -p pd || pd () {
@@ -12,13 +15,13 @@ type -p pd || pd () {
 modCheck () {
     if lsmod | grep -q v4l2loopback ; then
         pd "v4l2loopback module is already loaded."
-        ${DEBUG:-false} && {
-            cd /sys/devices/virtual/video4linux/ 
-            for dev in video* ; do
-                echo "--- Device: /dev/$dev ---" >&2
-                v4l2-ctl -d "/dev/$dev" --info 2>&1 | sed 's/^/    /' >&2   
-            done
-        }
+        pushd /sys/devices/virtual/video4linux/ 
+        vids=( video* )
+        VID1=${vids[0]#video}
+        VID2=${vids[1]#video}
+        modOptions=(video_nr=$VID1,$VID2 card_label='loopback1','loopback2')
+        popd
+
         return 0
     else
         pd "v4l2loopback module is not loaded."
@@ -67,8 +70,26 @@ main () {
 
     progn=${0##*/}  # basename
 
+    usage () {
+    cat <<_EOL_
+
+Usage: $progn <remove>
+
+Load the v4l2loopback module to create loopback video devices for use with
+split-recordAV.sh. Run this script with the 'remove' argument to unload the
+module.
+
+This script set VID1 and VID2 to the next available video numbers for loopback
+devices. If the module is already loaded, it will use the existing loopback
+devices and set VID1 and VID2 accordingly.
+
+_EOL_
+        exit 1
+    }
+
     case "$1" in
         remove) modDelete ; exit $? ;;
+        -h|--help) usage ;;
         *) ;;
     esac
 

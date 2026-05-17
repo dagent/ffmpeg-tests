@@ -39,6 +39,9 @@ Usage: $progn <options>
     -i video_device [$VID_DEVICE]   Real v4l2 capture device.
     -n video_number [$VID1]         Base number for loopback devices. 
                                     Will create /dev/video${VID1} and /dev/video$(( VID1 + 1 )).
+    -x                              Don't save to file, just display -- but still create loopback devices for use with other software. Overrides VID_OUTPUT.
+
+    v4l2loopback module needs to be pre-loaded for this script to run in the background. See v4l2loop.sh.
 
     Override the following variables via environment or command line options. 
 
@@ -65,6 +68,10 @@ while [ -n "$1" ] ; do
         -n) shift
             setAndStore VID1 "$1" ; setAndStore VID2 "$(( VID1 + 1 ))"
             pd "--- Output numbers set to $VID1 and $VID2"
+            ;;
+        -x) shift
+            VID_OUTPUT=""  ; setAndStore VID_OUTPUT ""
+            pd "--- VID_OUTPUT set to empty, will not save to file"
             ;;
         *) usage ;;
     esac
@@ -113,7 +120,6 @@ pd "Loop PID $loopcmdpid"
 
 sleep 1
 
-${DEBUG:-false} && set -x
 pd "Display " 
 { ffplay -hide_banner -loglevel error /dev/video$VID1 & } || {
     echo "Display  borked" >&2 ; exit ; } ; vid1pid=$!
@@ -124,26 +130,29 @@ pd "Display PID $vidpid1"
     #-f v4l2 -i /dev/video$VID2 -f xv "/dev/video$VID2" & } || { 
     #echo "Display 2 borked" >&2 ; exit ; } ; vid2pid=$!
 
-echo "Saving to file ${VID_OUTPUT}"
-{ ffmpeg -y -hide_banner \
-    -f v4l2 -i  /dev/video$VID2 "${VID_OUTPUT}" & } || { 
-        echo "File save borked" >&2 
-        exit 
-         } 
-          vid2pid=$!
-          pd "File save PID $vidpid2"
-
-set +x
+[ -n "$VID_OUTPUT" ] && {
+    echo "Saving to file ${VID_OUTPUT}"
+    { ffmpeg -y -hide_banner -loglevel error \
+        -f v4l2 -i  /dev/video$VID2 "${VID_OUTPUT}" & } || { 
+            echo "File save borked" >&2 
+            exit 
+            } 
+            vid2pid=$!
+            pd "File save PID $vidpid2"
+} || {
+    pd "Not saving to file, skipping ffmpeg output command."
+    echo "/dev/video$VID2 is available for use with other software." >&2
+}
 
 cleanup () {
     sleep .5
-    kill -TERM $vid2pid
+    [ -n "$vid2pid" ] && kill -TERM $vid2pid
     sleep .5
     kill -HUP $vid1pid
     sleep .5
     kill $loopcmdpid
-    sleep .5
-    modDelete
+    #sleep .5
+    #modDelete
 }
 
 trap cleanup EXIT HUP TERM
