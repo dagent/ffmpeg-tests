@@ -33,13 +33,14 @@ echo; echo "--- List Devices ---" ; echo
 v4l2-ctl --list-devices
 
 echo; echo "--- $device capabilities ---" ; echo
-ffmpeg -hide_banner -f v4l2 -list_formats all -i $device -f xv
+#ffmpeg -hide_banner -loglevel fatal -f v4l2 -list_formats all -i $device 
+v4l2-ctl -d $device --list-formats-ext
 
 echo; echo "--- $device controls ---" ; echo
 v4l2-ctl -d $device -L
 
 echo; echo "--- $device current settings ---" ; echo
-ffprobe -hide_banner $device
+#ffprobe -hide_banner $device
 echo
 v4l2-ctl -d $device -V
 
