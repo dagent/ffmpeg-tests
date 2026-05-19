@@ -158,6 +158,7 @@ fi
 printSTORED > /tmp/${progn}-vars.txt
 
 cleanup () {
+    trap - EXIT HUP TERM
     sleep .5
     [ -n "$vid2pid" ] && kill -TERM $vid2pid
     sleep .5
@@ -165,6 +166,7 @@ cleanup () {
     sleep .5
     kill $loopcmdpid
     [ -f /tmp/${progn}-vars.txt ] && rm /tmp/${progn}-vars.txt
+    exit
     #sleep .setAndStore
     #modDelete
 }

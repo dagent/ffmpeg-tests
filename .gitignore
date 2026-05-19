@@ -2,3 +2,4 @@ assets/*
 *.mov
 *.mkv
 *.wav
+.DS*

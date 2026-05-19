@@ -34,7 +34,7 @@ fi
 
 ffcmd=( ffmpeg 
     -hide_banner -nostdin
-    #-loglevel warn
+    -loglevel warning
     -f v4l2 -i "$AVAILABLE" 
     "${_now}.mov"
 )
@@ -63,9 +63,11 @@ audioPid=$!
 
 cleanup() {
     trap - EXIT HUP TERM INT
-    echo "Cleaning up..." >&2
+    sleep .5
+    echo "Cleaning up $ffpid $audioPid $splitpid" >&2
     kill -QUIT $ffpid
     sleep 1
+    kill -HUP $ffpid        # Sometimes needed if input got intterrupted 
     kill -TERM $audioPid
     sleep 1
 
@@ -76,6 +78,6 @@ cleanup() {
 
 trap cleanup EXIT HUP TERM INT
 
-wait -n $ffpid $audioPid
+wait -n $ffpid $audioPid $splitpid
 
 exit

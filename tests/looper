@@ -1,0 +1,90 @@
+#! /usr/bin/env bash
+
+# loop with return  
+
+progn="${0#/}"
+SLEEPTIME=10    # Seconds
+QUIET=false
+DEBUG=${DEBUG:-false}
+
+
+usage () {
+    cat <<_EOL
+
+$progn [-t sleeptime] [-q]
+
+Will cycle forever at sleeptime interval (default $SLEEPTIME seconds).
+Output a timestamp, unless -q.
+
+_EOL
+exit 1
+} # usage
+
+# Parse command line arguments
+while [ -n "$1" ] ; do
+    case "$1" in
+        -q) shift ; QUIET=true ;;
+        -t) shift
+            if [[ $1 -gt 0 ]] ; then {
+                SLEEPTIME="$1"
+                echo "Cycle time set to $SLEEPTIME" >&2
+            } else {
+                echo "$1 not greater than zero, ignoring" >&2
+            }
+            fi
+            shift
+            ;;
+        -h|--help|*) usage ;;
+    esac
+done
+
+_now () {
+    printf "%(%Y%m%d-%H%M%S)T" -1
+}
+
+# ignore some signals
+trapper () {
+    echo "Signal $1 recieved, ignored" >&2
+}
+
+cleanup () {
+    trap - EXIT
+    echo "Exiting; argument <$1>" >&2
+    exit
+}
+
+trap "trapper HUP" HUP
+trap "trapper TERM" TERM
+trap "cleanup INT" INT
+trap "cleanup EXIT" EXIT
+
+loopForever () {
+    while true; do
+        $QUIET || echo $(_now) PID=$BASHPID
+        sleep $SLEEPTIME
+    done
+    echo Somehow loopForever got here
+}
+
+echo "Script PID = $$" >&2
+# This kind of background will survive when the script ends.  Also, this
+# kind of PID can't be used by wait, as it's not a child process (it's a
+# sub-process).
+loopPID=$( loopForever > log 2>&1 &
+    echo $!
+)
+echo "loopPID = $loopPID" >&2
+
+trap "kill $loopPID" QUIT
+
+# All signals will cause wait to return! So we wrap it in a loop
+while kill -0 "$loopPID" ; do
+    echo [$(_now)] $loopPID running >&2
+    sleep 3
+done
+
+# Somehow got here
+echo "looper ended" >&2
+
+exit
+

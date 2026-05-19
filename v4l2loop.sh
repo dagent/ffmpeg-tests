@@ -94,7 +94,7 @@ _EOL_
     esac
 
     modLoad || {
-        pd "Error: Unable to load v4l2loopback module. Exiting."
+        echo "Error: Unable to load v4l2loopback module. Exiting." >&2
         exit 1
     }
 
