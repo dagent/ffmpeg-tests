@@ -1,0 +1,45 @@
+#! /bin/bash
+
+cd "${0%/*}"  # Change to the directory of the script
+
+# Configuration for verona
+
+VID_DEVICE="/dev/video0"
+VID_WIDTH=640
+VID_HEIGHT=480
+VID_FPS=10
+VID_FORMAT="yuyv422"
+#VID_OUTPUT="output.yuv"
+#VID_DURATION=10 # seconds
+
+AUD_DEVICE="hw:0"
+AUD_RATE=44100
+AUD_CHANNELS=2
+AUD_FORMAT="s16le"
+AUD_OUTPUT="output.raw"
+AUD_DURATION=10 # seconds   
+
+export VID_DEVICE VID_WIDTH VID_HEIGHT VID_FPS VID_FORMAT AUD_DEVICE AUD_RATE AUD_CHANNELS AUD_FORMAT AUD_OUTPUT
+
+cat <<_EOL_
+Variables used 
+VID_DEVICE: $VID_DEVICE
+VID_WIDTH: $VID_WIDTH
+VID_HEIGHT: $VID_HEIGHT
+VID_FPS: $VID_FPS
+VID_FORMAT: $VID_FORMAT
+AUD_DEVICE: $AUD_DEVICE
+AUD_RATE: $AUD_RATE
+AUD_CHANNELS: $AUD_CHANNELS
+AUD_FORMAT: $AUD_FORMAT
+AUD_OUTPUT: $AUD_OUTPUT 
+_EOL_
+
+./captureInit.sh display || exit
+
+./mergeAV.sh 
+
+
+
+
+

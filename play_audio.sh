@@ -1,11 +1,11 @@
 #!/bin/bash
 #
-# Made for KittyHo's output on hw:1
+# Audio player script using ffmpeg. It can read from an ALSA capture device or a file, and write to an ALSA playback device or a file.
 #
 
 progn=${0##*/}
-inputDevice="hw:3"
-outputDevice="hw:1"
+inputDevice=${AUD_DEVICE:-"hw:3"}
+outputDevice=${AUD_OUTPUT:-"hw:1"}
 
 inputParam=()
 outputParam=()
@@ -16,7 +16,7 @@ usage() {
 $progn [ -c file ] [ -p file ]
     
     Play audio from a file or device (default $inputDevice)
-    into device or file (default $outputDevice).
+    into device or file (default $outputDevice) using ffmpeg.
 
     ALSA device detection should be automatic.
 
@@ -52,6 +52,11 @@ if grep -q CAPTURE <( alsactl info $inputDevice 2> /dev/null ) ; then
     echo "$inputDevice is an ALSA capture device" >&2
     inputParam=( "${inputParam[@]}" -f alsa -ac 2 -ar 48000 )
 else
+    # Should be an actual file-like input. Assume raw PCM if it doesn't have a recognizable format.
+    [ -e "$inputDevice" ] || {
+        echo "Input < $inputDevice > not found." >&2
+        exit 1
+    }
     inputParam=( "${inputParam[@]}" -f s16le -ac 2 -ar 48000 )
 fi
     
@@ -72,6 +77,9 @@ cmd=( ffmpeg
 
 echo "$progn: Executing >> ${cmd[@]}" >&2
 "${cmd[@]}"
+ret=$?
 
-exit
+echo "$progn: Finished playing audio." >&2
+
+exit $ret
 
