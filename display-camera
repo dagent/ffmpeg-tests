@@ -1,0 +1,20 @@
+#!/bin/bash
+
+
+case "$1" in
+    -s|-q|-r|stop) 
+        ./captureInit.sh display -q
+        ;;
+    '')
+        ./cameraInit.sh 
+        sleep .1
+        ./captureInit.sh display 
+        ;;
+    -h) 
+        echo
+        echo "$0 (-q)"
+        echo "Start the camera display.  -q to stop"
+        ;;
+esac
+
+

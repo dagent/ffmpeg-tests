@@ -6,6 +6,7 @@
 progn=${0##*/}
 inputDevice=${AUD_DEVICE:-"hw:3"}
 outputDevice=${AUD_OUTPUT:-"hw:1"}
+pi () { echo "[$progn] $*" >&2 ; }
 
 inputParam=()
 outputParam=()
@@ -33,7 +34,7 @@ while [ -n "$1" ] ; do
         -c) 
             shift
             [ -e "$1" ] || {
-                echo "Input < "$1" > not found." >&2
+                pi "Input < "$1" > not found." 
                 exit 1
             }
             inputDevice="$1"
@@ -49,12 +50,12 @@ done
 
 # Input ALSA?
 if grep -q CAPTURE <( alsactl info $inputDevice 2> /dev/null ) ; then  
-    echo "$inputDevice is an ALSA capture device" >&2
+    pi "$inputDevice is an ALSA capture device" 
     inputParam=( "${inputParam[@]}" -f alsa -ac 2 -ar 48000 )
 else
     # Should be an actual file-like input. Assume raw PCM if it doesn't have a recognizable format.
     [ -e "$inputDevice" ] || {
-        echo "Input < $inputDevice > not found." >&2
+        pi "Input < $inputDevice > not found." 
         exit 1
     }
     inputParam=( "${inputParam[@]}" -f s16le -ac 2 -ar 48000 )
@@ -62,7 +63,7 @@ fi
     
 # Output ALSA?
 grep -q PLAYBACK <( alsactl info $outputDevice 2> /dev/null ) && { 
-    echo "$outputDevice is an ALSA playback device" >&2
+    pi "$outputDevice is an ALSA playback device" 
     outputParam=( "${outputParam[@]}" -f alsa )
 }
 
@@ -75,11 +76,11 @@ cmd=( ffmpeg
     "$outputDevice"
 )
 
-echo "$progn: Executing >> ${cmd[@]}" >&2
+pi "$progn: Executing >> ${cmd[@]}" 
 "${cmd[@]}"
 ret=$?
 
-echo "$progn: Finished playing audio." >&2
+pi "$progn: Finished playing audio." 
 
 exit $ret
 

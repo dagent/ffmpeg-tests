@@ -1,0 +1,6 @@
+
+./captureInit.sh display -q
+
+./captureInit.sh record -q
+
+./cameraInit.sh -r

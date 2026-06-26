@@ -4,3 +4,4 @@ trials/*
 *.mkv
 *.wav
 .DS*
+*.swp

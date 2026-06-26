@@ -1,0 +1,20 @@
+#!/bin/bash
+
+
+case "$1" in
+    -s|-q|-r|stop) 
+        ./captureInit.sh record -q
+        exit
+        ;;
+    -h) 
+        echo
+        echo "$0 [-q] [-o outputname] "
+        echo "Start the camera recording.  -q to stop"
+        exit
+        ;;
+    -o) _arg=( -o "$2" ) ;;
+esac
+
+
+./cameraInit.sh 
+./captureInit.sh record "${_arg[@]}"

@@ -5,17 +5,21 @@
  
 progn=${0##*/}  # basename
 cd ${0%/*} # Need to be in dirname for this script to work
+pi () { echo "[$progn] $*" >&2 ; }
+pd () { ${DEBUG:-false} && echo "[$progn-$BASH_LINENO] $*" >&2 ; }
 
 PIDFILE="/tmp/${progn}.pid"
 VARFILE="/tmp/${progn}-vars.txt"
 
 # Ability to declare and store our variables if not already set. See variable_storer.sh for details.
 [ -f ./variable_storer.sh ] || {
-   echo "At line $LINENO -- missing file." >&2 ; exit 1 ; }
+   pi "variable_storer.sh not found" ; exit 1 
+}
 . ./variable_storer.sh
 # This script relies on v4l2loopback module to create loopback video devices. See v4l2loopbackInit for details.
 [ -f ./v4l2loopbackInit ] || {
-   echo "At line $LINENO -- missing file." >&2 ; exit 1 ; }
+   pi "missing v4l2loopbackInit ." ; exit 1 
+}
 . ./v4l2loopbackInit ; modCheck 
 
 setAndStore VID_DEVICE /dev/video0
@@ -37,7 +41,7 @@ Usage: $progn <options>
 
     Options: 
 
-    -r              Remove camera from loopback devices and exit if not in use.
+    -r|-q           Remove camera from loopback devices and exit if not in use.
 
     -f              Force remove camera from loopback devices without
                     checking if they are in use.
@@ -47,10 +51,12 @@ Usage: $progn <options>
 
                             Will create /dev/video${VID1} and /dev/video$(( VID1 + 1 )).
 
-    v4l2loopback module needs to be pre-loaded for this script to run
-    in the background. See v4l2loopbackInit for details.
+    v4l2loopback module needs to be pre-loaded for this script to run in
+    the background. See v4l2loopbackInit for details. This script will
+    attempt to load it, but it will invoke sudo.
 
-    Override the following via environment variables by setting them before running the script.
+    Override the following via environment variables by setting them
+    before running the script.
 
 $(printSTORED)
 
@@ -59,46 +65,40 @@ _EOL_
     exit 1
 }
 
-# Debugging
-pd () {
-    local ln=${BASH_LINENO[0]} 
-    ${DEBUG:-false} && echo -ne "[$progn-$ln] $*\n" >&2
-}
-
 # Remove camera from loopback devices if not in use.
 removeCamera () {
     if [ -f $PIDFILE ] ; then {
         local pid=$(cat $PIDFILE)
-        if ps -p $pid > /dev/null 2>&1 ; then
-            echo "Process with PID $pid is still running." >&2
+        if ps -p $pid >& /dev/null ; then
+            pi "Process with PID $pid is still running."
             if [ "$1" != "nocheck" ] ; then
                 # Check if loopback devices are in use before removing camera from them.
                 local pid1=$(lsof -t /dev/video$VID1 2>/dev/null | grep -v $pid)
                 local pid2=$(lsof -t /dev/video$VID2 2>/dev/null | grep -v $pid)
                 if [ -n "$pid1" ] || [ -n "$pid2" ] ; then
-                        echo "Loopback devices /dev/video$VID1 or /dev/video$VID2 are currently in use. Not removing camera from loopback devices." >&2
+                        pi "Loopback devices /dev/video$VID1 or /dev/video$VID2 are currently in use. Not removing camera from loopback devices."
                     return 1
                 fi
             fi
-            echo "Removing camera from loopback devices." >&2
+            pi "Removing camera from loopback devices."
             kill -TERM $pid || {
-                echo "Error killing process with PID $pid. Exiting." >&2
+                pi "Error killing process with PID $pid. Exiting."
                 return 1
             }
 
             rm -f $PIDFILE
             rm -f $VARFILE
-            echo "Camera removed from loopback devices." >&2
+            pi "Camera removed from loopback devices." 
 
         else {   
-            echo "Process with PID $pid is not running. Removing stale PID file." >&2
+            pi "Process with PID $pid is not running. Removing stale PID file." 
             rm -f $PIDFILE
             rm -f $VARFILE
             }
         fi
 
     } else {
-        echo "No PID file found. Assuming camera is not currently attached to loopback devices."
+        pi "No PID file found. Assuming camera is not currently attached to loopback devices."
     } 
     fi
     return 0
@@ -107,16 +107,17 @@ removeCamera () {
 # Handle command line options.
 while [ -n "$1" ] ; do
     case "$1" in
-        -r) echo "Removing camera from loopback devices if not in use and exiting."
-            removeCamera || {
-                echo "Error removing camera from loopback devices. Exiting." >&2
+        -r|-q|remove)
+           pi "Removing camera from loopback devices if not in use and exiting."
+           removeCamera || {
+                pi "Error removing camera from loopback devices. Exiting." 
                 exit 1
             }
             exit 0
             ;;
-        -f) echo "Force removing camera from loopback devices without checking if they are in use."
+        -f) pi "Force removing camera from loopback devices without checking if they are in use."
             removeCamera nocheck || {
-                echo "Error removing camera from loopback devices. Exiting." >&2
+                pi "Error removing camera from loopback devices. Exiting." 
                 exit 1
             }
             exit 0
@@ -136,21 +137,21 @@ done
 
 # Are we already running? If so, exit. This is to prevent multiple instances of
 # this script from running at the same time and creating multiple loopback
-# devices.
+# devices.  We *do not* consider this a failure.
 if [ -f "$PIDFILE" ] ; then
-    echo "Another instance of $progn is already running. Exiting." >&2
-    exit 1
+    pi "Another instance of $progn is already running. Exiting." 
+    exit 0
 fi
 
 # Video device exists?
 [ -c "$VID_DEVICE" ] || {
-    echo "--- Error: VID_DEVICE '$VID_DEVICE' not found. Exiting." >&2
+    pi "--- Error: VID_DEVICE '$VID_DEVICE' not found. Exiting." 
     exit 1
 }
 
 # Insert loopback module if not already loaded and check for errors.
 modLoad || {
-    echo "Error: Unable to load v4l2loopback module. Exiting." >&2
+    pi "Error: Unable to load v4l2loopback module. Exiting." 
     exit 1
 }
 
@@ -178,7 +179,7 @@ loopcmd=( ffmpeg
 pd "Executing loop cmd\n\t${loopcmd[@]}\n"
 
 { "${loopcmd[@]}" & }  || {
-    echo "loop cmd borked" >&2 ; exit 1 ; } ; loopcmdpid=$!
+    pi "loop cmd borked" ; exit 1 ; } ; loopcmdpid=$!
 pd "Loop PID $loopcmdpid"
 echo $loopcmdpid > $PIDFILE
 

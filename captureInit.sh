@@ -4,11 +4,11 @@
 
 _now=$(printf "%(%Y%m%d-%H%M%S)T" -1)
 progn=${0##*/}  # basename
-cd ${0%/*} # Need to be in dirname for this script to work
+cd "${0%/*}" || exit 1 # Need to be in dirname for this script to work
 ofilen="$_now.mkv"
 
-pe () {
-    echo "$progn: $@" >&2
+pi () {
+    echo "[$progn] $*" >&2
 }
 
 [ -f /tmp/cameraInit.sh-vars.txt ] && . /tmp/cameraInit.sh-vars.txt 
@@ -29,9 +29,6 @@ Usage: $progn [display|record] <options>
     Options:        
     -q                          Remove display/record from loopback device
                                 and exit if not in use.
-
-    -f                          Force remove display/record from loopback device
-                                without checking if it is in use.
 
     -i device                   Loopback video device to display/record.
                                 Should be created by cameraInit.sh.
@@ -59,51 +56,40 @@ esac
 
 PIDFILE="/tmp/${progn}-${mode}.pid"
 
+removeFromLoopback () {
+
+    # Remove display/record from loopback device and exit if not in use.
+    pi "$mode: request to quit"
+    if [ -f $PIDFILE ] ; then
+        PID=$(cat $PIDFILE)
+        # Sometimes ffmpeg just doesn't listen...
+        for sig in TERM HUP INT QUIT KILL ; do
+            if ps -p $PID > /dev/null 2>&1 ; then
+                pi "L$LINENO -- $mode process with PID $PID" \
+                    " is still running. Killing with -$sig." 
+                kill -$sig $PID 
+                sleep .1
+            else
+                pi "L$LINENO -- $mode process with PID $PID is "\
+                    "not running. Removing PID file." 
+                [ -f $PIDFILE ] && rm $PIDFILE
+                exit 0
+            fi
+        done
+        # If we get here, something's wrong
+        pi "!!! Can't stop $PID; bailing !!!" ; exit 2
+    else
+        pi "at $LINENO - $mode no pid file; apparently not running."
+        pi "Nothing to remove." 
+        exit 0
+    fi
+
+}
+
 # Handle command line options.
-while getopts "qfd:o:" opt; do
+while getopts "qi:o:" opt; do
     case $opt in
-        q)  # Remove display/record from loopback device and exit if not in use.
-            if [ -f $PIDFILE ] ; then
-                PID=$(cat $PIDFILE)
-                if ps -p $PID > /dev/null 2>&1 ; then
-                    pe "At line $LINENO -- $mode process with PID $PID is still running. Removing $mode from loopback device." 
-                    kill -TERM $PID || {
-                        pe "Error killing $mode process with PID $PID. Exiting." 
-                        exit 1
-                    }
-                    rm -f $PIDFILE
-                    exit 0
-                else
-                    pe "At line $LINENO -- $mode process with PID $PID is not running. Removing PID file." 
-                    rm -f $PIDFILE
-                    exit 0
-                fi
-            else
-                pe "At line $LINENO -- $mode not running. Nothing to remove." 
-                exit 0
-            fi
-            ;;
-        f)  # Force remove display from loopback device without checking if it is in use.
-            if [ -f $PIDFILE ] ; then
-                PID=$(cat $PIDFILE)
-                if ps -p $PID > /dev/null 2>&1 ; then
-                    pe "At line $LINENO -- $mode process with PID $PID is still running. Force removing $mode from loopback device." 
-                    kill -TERM $PID || {
-                        pe "Error killing $mode process with PID $PID. Exiting." 
-                        exit 1
-                    }
-                    rm -f $PIDFILE
-                    exit 0
-                else
-                    pe "At line $LINENO -- $mode process with PID $PID is not running. Removing PID file." 
-                    rm -f $PIDFILE
-                    exit 0
-                fi
-            else
-                pe "At line $LINENO -- $mode not running. Nothing to remove." 
-                exit 0
-            fi
-            ;;
+        q) removeFromLoopback ;;
         i)  inputDev="$OPTARG" ;;
         o)  ofilen="$OPTARG" ;;
         *)  usage ;;
@@ -111,44 +97,57 @@ while getopts "qfd:o:" opt; do
 done
 shift $((OPTIND -1))    
 
-# Check if mode is already running.
-[ -f $PIDFILE ] && {
-    pe "At line $LINENO -- $mode already running. Use -q to remove." ; exit 1 ; }
+# Check if mode is already running.  We return success.
+[ -f "$PIDFILE" ] && {
+    pi "At line $LINENO -- $mode already running. Use -q to remove." ; exit 0 ; }
 
 # cameraInit.sh running?
 [ -f /tmp/cameraInit.sh.pid ] || {
-    pe "cameraInit.sh not running -- exiting." ; exit 1 ; }
+    pi "cameraInit.sh not running -- exiting." ; exit 1 ; }
 
 # Check if loopback video device exists.
-[ -c $inputDev ] || {
-    pe "At line $LINENO -- loopback video device $inputDev not found." ; exit 1 ; }
+[ -c "$inputDev" ] || {
+    pi "At line $LINENO -- loopback video device $inputDev not found." ; exit 1 ; }
 
 main() {
 
     case "$mode" in
-        display) pe "Starting display from $inputDev..." 
-                ffplay -hide_banner -loglevel error $inputDev & 
+        display) pi "Starting display from $inputDev..." 
+                ffplay -hide_banner -loglevel error "$inputDev" & 
                 ;;
-        record) pe "Starting record from $inputDev..." 
-                ffmpeg -hide_banner -loglevel error -nostdin -f v4l2 -i $inputDev -c copy -f matroska $ofilen &
+        record) pi "Starting record from $inputDev..." 
+                ffmpeg -hide_banner -loglevel error -nostdin -f v4l2 -i "$inputDev" -c copy -f matroska "$ofilen" &
                 ;;
     esac
     PID=$!
-    pe "Started ${mode}ing with PID $PID" 
-    pe $PID > $PIDFILE    
+    pi "Started ${mode}ing with PID $PID" 
+    echo $PID > $PIDFILE
 
     cleanup() {
-        trap - HUP TERM INT EXIT
+        trap - TERM 
+        pi "($mode) Trap signal [$1] rcvd, cleanup called."
         $0 $mode -q
     }
 
-    trap cleanup HUP TERM INT EXIT
+    ignore () {
+        pi "($mode) ignoring kill signal $1"
+    }
+
+    trap 'cleanup TERM' TERM 
+    trap 'ignore HUP' HUP
+    trap 'ignore EXIT' EXIT
+    trap 'ignore INT' INT
 
     wait $PID
+    # We got here because ffplay or ffmpeg exited
+    pi "$mode - $PID exited."
+    [ -f $PIDFILE ] && rm $PIDFILE
 
 }
 
 main &
 mainPid=$!
-pe "Started main function in background with PID $mainPid" 
+
+pi "Started main() $mode function in background with PID $mainPid" 
+
 

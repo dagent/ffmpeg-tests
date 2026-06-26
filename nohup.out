@@ -1,0 +1,10 @@
+[cameraInit.sh] v4l2loopback module is already loaded.
+[cameraInit.sh] Using existing loopback devices: /dev/video2 and /dev/video3
+[cameraInit.sh] v4l2loopback module is already loaded.
+[cameraInit.sh] Using existing loopback devices: /dev/video2 and /dev/video3
+[captureInit.sh] Started main() display function in background with PID 3205200
+[captureInit.sh] Starting display from /dev/video2...
+[captureInit.sh] Started displaying with PID 3205201
+[captureInit.sh] (display) ignoring kill signal INT
+[captureInit.sh] display - 3205201 exited.
+[captureInit.sh] (display) ignoring kill signal EXIT

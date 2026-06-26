@@ -14,5 +14,5 @@ There are some bash and systems calls to deal with running multiple ffmpeg insta
 
 **variable_storer.sh** -- some utility functions for cross scripting utilities to keep track of audio/video parameters.  Aspirational for now... (also **conf**)
 
-See the **verona** script for use.
+See the **verona** or **bilbao** scripts for use.
 

@@ -12,7 +12,7 @@ VID_FORMAT="yuyv422"
 #VID_OUTPUT="output.yuv"
 #VID_DURATION=10 # seconds
 
-AUD_DEVICE="hw:0"
+AUD_DEVICE="hw:3"
 AUD_RATE=44100
 AUD_CHANNELS=2
 AUD_FORMAT="s16le"
@@ -35,11 +35,11 @@ AUD_FORMAT: $AUD_FORMAT
 AUD_OUTPUT: $AUD_OUTPUT 
 _EOL_
 
-./display-camera || exit
+nohup ./display-camera || exit
 
 ./mergeAV.sh 
 
-
+./stop-camera
 
 
 

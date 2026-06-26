@@ -5,29 +5,30 @@
 # number.  To specify different video numbers, set VID1 and VID2 environment
 # variables before running the script. 
 
-
+: ${progn:=${0##*/}}
 type -p pd || pd () {
-    ${DEBUG:-false} && echo -ne "[$progn-${BASH_LINENO[0]}] $*\n" >&2 ; true
+    ${DEBUG:-false} && echo -ne "[$progn-$BASH_LINENO] $*\n" >&2 ; true
 }
+type -p pi || pi () { echo -ne "[$progn] $*\n" >&2 ; true ; }
 
 runfile=/tmp/v4l2loopback.run
 
 # modCheck checks if the v4l2loopback module is loaded. Sets VID1, VID2, and modOptions.
 modCheck () {
     if lsmod | grep -q v4l2loopback ; then
-        echo "v4l2loopback module is already loaded." >&2
+        pi "v4l2loopback module is already loaded." 
         pushd /sys/devices/virtual/video4linux/ &> /dev/null
         vids=( video* )
         export VID1=${vids[0]#video}
         export VID2=${vids[1]#video}
         export modOptions=(video_nr=$VID1,$VID2 card_label='loopback1','loopback2')
-        echo "Using existing loopback devices: /dev/video$VID1 and /dev/video$VID2" >&2
+        pi "Using existing loopback devices: /dev/video$VID1 and /dev/video$VID2" 
         echo -en "VID1=$VID1\nVID2=$VID2\n" > "$runfile"
         popd &> /dev/null
 
         return 0
     else
-        echo "v4l2loopback module is not loaded." >&2
+        pi "v4l2loopback module is not loaded." 
         ${DEBUG:-false} && modinfo -n v4l2loopback
 
         # Get the next available video number for loopback devices
@@ -44,7 +45,7 @@ modCheck () {
 # Load the v4l2loopback module.
 modLoad () {
     modCheck && return 0
-    echo "Attempting to load v4l2loopback module with sudo privileges..." >&2
+    pi "Attempting to load v4l2loopback module with sudo privileges..." 
     if sudo modprobe v4l2loopback "${modOptions[@]}" ; then
         pd "v4l2loopback module loaded successfully."
         modCheck
@@ -57,14 +58,15 @@ modLoad () {
 
 # Remove the v4l2loopback module.
 modDelete () {
+    pi "delete doing modCheck"
     if modCheck ; then
-        echo "Attempting to remove v4l2loopback module with sudo privileges..." >&2
+        pi "Attempting to remove v4l2loopback module with sudo privileges..." 
         if sudo modprobe -r v4l2loopback ; then
-            echo "v4l2loopback module removed successfully." >&2
+            pi "v4l2loopback module removed successfully." 
             modCheck
             return 0
         else
-            echo "Failed to remove v4l2loopback module." >&2
+            pi "Failed to remove v4l2loopback module." 
             return 1
         fi
     else
@@ -74,8 +76,6 @@ modDelete () {
 }
 
 main () {
-
-    progn=${0##*/}  # basename
 
     usage () {
     cat <<_EOL_
@@ -94,14 +94,14 @@ _EOL_
         exit 1
     }
 
+    
     case "$1" in
-        remove) modDelete ; exit $? ;;
+        -r|remove) modDelete ; exit $? ;;
         -h|--help) usage ;;
-        *) ;;
     esac
 
     modLoad || {
-        echo "Error: Unable to load v4l2loopback module. Exiting." >&2
+        pi "Error: Unable to load v4l2loopback module. Exiting." 
         exit 1
     }
 
@@ -110,3 +110,4 @@ _EOL_
 }
 
 return &> /dev/null || main "$@"  # Run main() if called as a script
+
